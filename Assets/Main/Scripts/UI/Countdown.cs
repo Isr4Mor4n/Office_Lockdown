@@ -8,7 +8,7 @@ using UnityEngine.SceneManagement;
 public class Countdown : MonoBehaviour
 {
     [SerializeField] TextMeshProUGUI _timerText;
-    float _remainingTime = 31.0f;
+    float _remainingTime = 5.0f;
 
     void Update()
     {
@@ -36,7 +36,7 @@ public class Countdown : MonoBehaviour
 
     void GameOver()
     {
-        SceneManager.LoadScene("_mainMenu");
+        SceneManager.LoadScene("_gameOver");
     }
 
     

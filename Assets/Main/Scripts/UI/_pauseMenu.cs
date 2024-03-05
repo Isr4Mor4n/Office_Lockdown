@@ -28,8 +28,7 @@ public class _pauseMenu : MonoBehaviour
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
-
-
+    
 
 
 }
