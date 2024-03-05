@@ -2,11 +2,13 @@ using System.Collections.Generic;
 using System.Collections;
 using UnityEngine;
 using TMPro;
+using System;
+using UnityEngine.SceneManagement;
 
 public class Countdown : MonoBehaviour
 {
     [SerializeField] TextMeshProUGUI _timerText;
-    float _remainingTime = 301.0f;
+    float _remainingTime = 31.0f;
 
     void Update()
     {
@@ -18,7 +20,7 @@ public class Countdown : MonoBehaviour
         else if (_remainingTime < 0)
         {
             _remainingTime = 0;
-            //GameOver();
+            GameOver();
         }
 
         if (_remainingTime < 31)
@@ -31,4 +33,11 @@ public class Countdown : MonoBehaviour
 
         _timerText.text = string.Format("{00:00}:{1:00}", minutes, seconds);
     }
+
+    void GameOver()
+    {
+        SceneManager.LoadScene("_mainMenu");
+    }
+
+    
 }
