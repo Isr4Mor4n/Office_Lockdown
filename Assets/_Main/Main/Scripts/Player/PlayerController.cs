@@ -1,53 +1,76 @@
-using System.Collections.Generic;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using System.Collections;
 using UnityEngine.AI;
 using UnityEngine;
+using UnityEngine.InputSystem.Controls;
 
 public class PlayerController : MonoBehaviour
 {
-    InputManager Input;
-    NavMeshAgent Agent;
+    InputManager input;
+    NavMeshAgent agent;
 
     [SerializeField] ParticleSystem clickEffect;
     [SerializeField] LayerMask clickableLayers;
 
-    float LookRotationSpeed = 5.0f;
+    float lookRotationSpeed = 5.0f;
+    Vector3 pausedDestination;
+    bool isPaused = false;
 
     void Awake()
     {
-        Agent = GetComponent<NavMeshAgent>();
-
-        Input = new InputManager();
+        agent = GetComponent<NavMeshAgent>();
+        input = new InputManager();
         AssignInputs();
     }
 
     void AssignInputs()
     {
-        Input.General.Movement.performed += ctx => ClickToMove();
+        input.General.Movement.performed += ctx => ClickToMove(ctx);
     }
 
-    void ClickToMove()
+    void ClickToMove(InputAction.CallbackContext context)
     {
-        RaycastHit hit;
-        if (Physics.Raycast(Camera.main.ScreenPointToRay(UnityEngine.Input.mousePosition), out hit, 100, clickableLayers))
+        if (isPaused || EventSystem.current.IsPointerOverGameObject())
+            return;
+
+        Vector2 screenPosition = Vector2.zero;
+        if (context.control.device is Touchscreen && context.control is TouchControl)
         {
-            Agent.destination = hit.point;
+            TouchControl touch = (TouchControl)context.control;
+            screenPosition = touch.position.ReadValue();
+        }
+        else if (Mouse.current != null)
+        {
+            screenPosition = Mouse.current.position.ReadValue();
+        }
+
+        RaycastHit hit;
+        Ray ray = Camera.main.ScreenPointToRay(screenPosition);
+        if (Physics.Raycast(ray, out hit, Mathf.Infinity, clickableLayers))
+        {
+            agent.SetDestination(hit.point);
+            pausedDestination = Vector3.zero;
             if (clickEffect != null)
-            { 
-                Instantiate(clickEffect, hit.point + new Vector3(0, 0.1f, 0), clickEffect.transform.rotation); 
+            {
+                var effectInstance = Instantiate(clickEffect, hit.point + Vector3.up * 0.1f, Quaternion.identity);
+                Destroy(effectInstance.gameObject, 0.5f);
             }
         }
     }
 
     void OnEnable()
     {
-        Input.Enable();
+        input.Enable();
+        PauseManager.OnGamePaused += HandleGamePaused;
+        PauseManager.OnGameResumed += HandleGameResumed;
     }
 
     void OnDisable()
     {
-        Input.Disable();
+        input.Disable();
+        PauseManager.OnGamePaused -= HandleGamePaused;
+        PauseManager.OnGameResumed -= HandleGameResumed;
     }
 
     void Update()
@@ -57,8 +80,33 @@ public class PlayerController : MonoBehaviour
 
     void FaceTarget()
     {
-        Vector3 direction = (Agent.destination - transform.position).normalized;
-        Quaternion lookRotation = Quaternion.LookRotation(new Vector3(direction.x, 0, direction.z));
-        transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, Time.deltaTime * LookRotationSpeed);
+        if (agent.hasPath)
+        {
+            Vector3 direction = (agent.destination - transform.position).normalized;
+            if (direction.magnitude > 0.1f)
+            {
+                Quaternion lookRotation = Quaternion.LookRotation(new Vector3(direction.x, 0, direction.z));
+                transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, Time.deltaTime * lookRotationSpeed);
+            }
+        }
+    }
+
+    void HandleGamePaused()
+    {
+        isPaused = true;
+        if (agent.pathPending || agent.hasPath)
+        {
+            pausedDestination = agent.destination;
+            agent.ResetPath();
+        }
+    }
+
+    void HandleGameResumed()
+    {
+        isPaused = false;
+        if (pausedDestination != Vector3.zero)
+        {
+            agent.SetDestination(pausedDestination);
+        }
     }
 }
